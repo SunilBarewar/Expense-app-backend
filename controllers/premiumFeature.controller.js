@@ -40,6 +40,6 @@ exports.generateReportOfExpenses = async (req, res) => {
     const filename = `expense-report-${shortid.generate()}.json`;
     uploadToS3(res, filename, stringifiedExpenses);
   } catch (error) {
-    res.status(500).send("Error generating the PDF");
+    res.status(500).json({ message: "failed to generate report" });
   }
 };

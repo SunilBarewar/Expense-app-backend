@@ -46,12 +46,11 @@ const getAllExpensesOfUser = async (req, res) => {
       limit: limit,
       offset: offset,
     });
-    console.log(rows.length);
     return res
       .status(200)
       .json({ expenses: rows, totalPages: Math.ceil(count / limit) });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return res.status(500).json({ message: "failed to fetch expenses" });
   }
 };
 

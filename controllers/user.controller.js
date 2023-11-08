@@ -6,7 +6,6 @@ const UserModel = require("../models/User.model");
 const generateAccessToken = require("../utils/generateAccessToken");
 const createHtmlContentForMail = require("../utils/mailTemplate");
 const ForgotPasswordRequestModel = require("../models/ForgotPasswordRequest.model");
-const { sequelize } = require("../utils/db-config");
 
 exports.signupUser = async (req, res, next) => {
   const saltRounds = 10;
@@ -133,7 +132,7 @@ exports.sendForgotPasswordEmail = async (req, res) => {
 
 exports.updatePassword = async (req, res) => {
   const { request_id, newPassword } = req.body;
-  console.log(req.body);
+
   const saltRounds = 10;
   try {
     const result = await ForgotPasswordRequestModel.findOne({
