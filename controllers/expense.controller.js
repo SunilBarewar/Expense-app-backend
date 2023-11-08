@@ -1,7 +1,7 @@
 const { Sequelize } = require("sequelize");
 const ExpenseModel = require("../models/Expense.model");
 const UserModel = require("../models/User.model");
-const { sequelize } = require("../utils/db");
+const { sequelize } = require("../utils/db-config");
 
 const addExpense = async (req, res) => {
   const t = await sequelize.transaction();

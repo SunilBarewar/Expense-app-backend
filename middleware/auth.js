@@ -7,7 +7,9 @@ const authenticate = (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
-    return res.status(403).json(error.message);
+    return res
+      .status(403)
+      .json({ message: "you are not authenticated to access this service" });
   }
 };
 

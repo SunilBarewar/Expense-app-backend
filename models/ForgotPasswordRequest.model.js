@@ -1,4 +1,4 @@
-const { sequelize } = require("../utils/db");
+const { sequelize } = require("../utils/db-config");
 const { DataTypes } = require("sequelize");
 
 const ForgotPasswordRequestModel = sequelize.define("ForgotPasswordRequests", {

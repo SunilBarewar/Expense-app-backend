@@ -6,7 +6,7 @@ const UserModel = require("../models/User.model");
 const generateAccessToken = require("../utils/generateAccessToken");
 const createHtmlContentForMail = require("../utils/mailTemplate");
 const ForgotPasswordRequestModel = require("../models/ForgotPasswordRequest.model");
-const { sequelize } = require("../utils/db");
+const { sequelize } = require("../utils/db-config");
 
 exports.signupUser = async (req, res, next) => {
   const saltRounds = 10;

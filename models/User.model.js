@@ -1,6 +1,6 @@
 const { DataTypes } = require("sequelize");
 
-const { sequelize } = require("../utils/db");
+const { sequelize } = require("../utils/db-config");
 
 const UserModel = sequelize.define("users", {
   id: {
@@ -26,10 +26,10 @@ const UserModel = sequelize.define("users", {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
   },
-  totalExpense:{
-    type : DataTypes.INTEGER,
-    defaultValue : 0
-  }
+  totalExpense: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+  },
 });
 
 module.exports = UserModel;
