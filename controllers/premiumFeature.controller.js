@@ -1,5 +1,5 @@
-const ExpenseModel = require("../models/Expense.model");
-const UserModel = require("../models/User.model");
+const Expense = require("../models/Expense.model");
+const User = require("../models/User.model");
 const shortid = require("shortid");
 const uploadToS3 = require("../service/uploadToS3");
 
@@ -11,9 +11,9 @@ exports.getUsersWithTotalExpenses = async (req, res) => {
       .json({ message: "Access Forbidden! , you aren't the premium user" });
 
   try {
-    const result = await UserModel.findAll({
-      attributes: ["name", "totalExpense"],
-    });
+    const result = await User.find({})
+      .select("name totalExpense")
+      .sort({ totalExpense: -1 });
     return res.status(200).json(result);
   } catch (error) {
     console.log(error);
@@ -22,23 +22,20 @@ exports.getUsersWithTotalExpenses = async (req, res) => {
 };
 
 exports.generateReportOfExpenses = async (req, res) => {
-  const { isPremium, userId } = req.user;
+  const { isPremium, _id } = req.user;
   if (!isPremium)
     return res
       .status(403)
       .json({ message: "Access Forbidden! , you aren't the premium user" });
 
   try {
-    const expenses = await ExpenseModel.findAll({
-      attributes: ["category", "desc", "amount", "createdAt"],
-      where: {
-        userId,
-      },
-    });
-
+    const expenses = await Expense.find({ userId: _id }).select(
+      "category desc amount createdAt -_id"
+    );
     const stringifiedExpenses = JSON.stringify(expenses);
     const filename = `expense-report-${shortid.generate()}.json`;
     uploadToS3(res, filename, stringifiedExpenses);
+    // res.status(200).json(expenses);
   } catch (error) {
     res.status(500).json({ message: "failed to generate report" });
   }

@@ -1,7 +1,7 @@
 const Razorpay = require("razorpay");
 const shortid = require("shortid");
-const OrderModel = require("../models/Order.model");
-const UserModel = require("../models/User.model");
+const Order = require("../models/Order.model");
+const User = require("../models/User.model");
 const generateAccessToken = require("../utils/generateAccessToken");
 
 const razorpay = new Razorpay({
@@ -18,10 +18,10 @@ const purchasePremiumMembership = async (req, res) => {
     currency,
     receipt: shortid.generate(),
   };
-  const { userId } = req.user;
+  const { _id } = req.user;
   try {
     const order = await razorpay.orders.create(options);
-    await OrderModel.create({ userId, order_id: order.id });
+    await new Order({ userId: _id, order_id: order.id }).save();
     return res.status(200).json({
       order,
       key_id: process.env.RAZORPAY_KEY_ID,
@@ -33,20 +33,16 @@ const purchasePremiumMembership = async (req, res) => {
 
 const updatePaymentAndMembershipStatus = async (req, res) => {
   const { order_id, payment_id, payment_status } = req.body;
-  const { userId } = req.user;
+  const { _id } = req.user;
   try {
-    await OrderModel.update(
-      { payment_id, payment_status },
-      {
-        where: {
-          order_id: order_id,
-        },
-      }
+    await Order.findOneAndUpdate(
+      { order_id: order_id },
+      { payment_id, payment_status }
     );
     const isPremium = payment_status === "successful";
-    const token = generateAccessToken({ userId, isPremium });
+    const token = generateAccessToken({ userId: _id, isPremium });
     if (isPremium) {
-      await UserModel.update({ isPremium: true }, { where: { id: userId } });
+      await User.findByIdAndUpdate(_id, { isPremium: true });
     }
     return res.status(200).json({ token, isPremium });
   } catch (error) {

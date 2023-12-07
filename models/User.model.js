@@ -1,35 +1,31 @@
-const { DataTypes } = require("sequelize");
+const { Schema, model } = require("mongoose");
 
-const { sequelize } = require("../utils/db-config");
-
-const UserModel = sequelize.define("users", {
-  id: {
-    type: DataTypes.INTEGER,
-    primaryKey: true,
-    allowNull: false,
-    autoIncrement: true,
-  },
+const UserSchema = new Schema({
   name: {
-    type: DataTypes.STRING,
-    allowNull: false,
+    type: String,
+    required: true,
   },
   email: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    unique: true,
+    type: String,
+    required: true,
   },
   password: {
-    type: DataTypes.STRING,
-    allowNull: false,
+    type: String,
+    required: true,
   },
   isPremium: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: false,
+    type: Boolean,
+    default: false,
   },
   totalExpense: {
-    type: DataTypes.INTEGER,
-    defaultValue: 0,
+    type: Number,
+    default: 0,
   },
 });
 
-module.exports = UserModel;
+UserSchema.methods.updateTotalExpense = function (updatedTotalExpense) {
+  this.totalExpense = updatedTotalExpense;
+  return this.save();
+};
+
+module.exports = model("User", UserSchema);

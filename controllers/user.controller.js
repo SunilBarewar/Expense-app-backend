@@ -2,36 +2,36 @@ const bcrypt = require("bcrypt");
 const brevo = require("@getbrevo/brevo");
 const { v4: uuidv4 } = require("uuid");
 
-const UserModel = require("../models/User.model");
+const User = require("../models/User.model");
 const generateAccessToken = require("../utils/generateAccessToken");
 const createHtmlContentForMail = require("../utils/mailTemplate");
-const ForgotPasswordRequestModel = require("../models/ForgotPasswordRequest.model");
+const ForgotPasswordRequest = require("../models/ForgotPasswordRequest.model");
 
 exports.signupUser = async (req, res, next) => {
   const saltRounds = 10;
   try {
     const { email, password } = req.body;
-    let user = await UserModel.findOne({ where: { email: email } });
+    let user = await User.findOne({ email: email });
 
     if (user) {
       return res.status(409).json({ message: "user already exits" });
     }
-    bcrypt.hash(password, saltRounds, async function (err, hash) {
-      user = await UserModel.create({ ...req.body, password: hash });
+    const hashPass = await bcrypt.hash(password, saltRounds);
 
-      const { isPremium, totalExpense } = user;
+    user = new User({ ...req.body, password: hashPass });
 
-      const token = generateAccessToken({
-        userId: user.id,
-        isPremium,
-        totalExpense,
-      });
+    await user.save();
+    const { isPremium, totalExpense } = user;
 
-      return res.status(200).json({
-        token,
-        isPremium,
-        totalExpense,
-      });
+    const token = generateAccessToken({
+      userId: user._id,
+      isPremium,
+    });
+
+    return res.status(200).json({
+      token,
+      isPremium,
+      totalExpense,
     });
   } catch (error) {
     return res.status(500).json(error);
@@ -40,10 +40,8 @@ exports.signupUser = async (req, res, next) => {
 exports.signinUser = async (req, res, next) => {
   try {
     const { password, email } = req.body;
-    const user = await UserModel.findOne({
-      where: {
-        email,
-      },
+    const user = await User.findOne({
+      email: email,
     });
 
     // user does not found
@@ -58,9 +56,8 @@ exports.signinUser = async (req, res, next) => {
     const { isPremium, totalExpense } = user;
 
     const token = generateAccessToken({
-      userId: user.id,
+      userId: user._id,
       isPremium,
-      totalExpense,
     });
 
     return res.status(200).json({
@@ -77,19 +74,20 @@ exports.sendForgotPasswordEmail = async (req, res) => {
   const { email } = req.body;
 
   // first check that this email/user exists or not
-  const user = await UserModel.findOne({
-    where: {
-      email,
-    },
+  const user = await User.findOne({
+    email: email,
   });
 
   // if not exist return 404 NOT FOUND Status
   if (!user) return res.status(404).json({ message: "email does not exists!" });
 
   const uid = uuidv4();
+  const request = new ForgotPasswordRequest({ userId: user._id });
 
-  const link = `${process.env.CLIENT_URL}/reset-password/${uid}`;
+  // console.log(request.._id);
 
+  const link = `${process.env.CLIENT_URL}/reset-password/${request._id}`;
+  console.log(link);
   // create an email
   let defaultClient = brevo.ApiClient.instance;
 
@@ -114,12 +112,9 @@ exports.sendForgotPasswordEmail = async (req, res) => {
 
   apiInstance.sendTransacEmail(sendSmtpEmail).then(
     async function (data) {
-      // after successfully sending the mail , create a forgotPasswordRequest
-      await ForgotPasswordRequestModel.create({
-        request_id: uid,
-        userId: user.id,
-        isActive: true,
-      });
+      // after successfully sending the mail , save request object
+
+      await request.save();
 
       res.status(200).json({ message: "mail sent successfully!!" });
     },
@@ -135,20 +130,15 @@ exports.updatePassword = async (req, res) => {
 
   const saltRounds = 10;
   try {
-    const result = await ForgotPasswordRequestModel.findOne({
-      where: { request_id },
-    });
+    const result = await ForgotPasswordRequest.findById(request_id);
+    if (!result)
+      return res.status(404).json({ message: "request doesn't exists" });
 
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
-    const p1 = UserModel.update(
-      { password: hashedPassword },
-      {
-        where: {
-          id: result.userId,
-        },
-      }
-    );
+    const p1 = User.findByIdAndUpdate(result.userId, {
+      password: hashedPassword,
+    });
     result.isActive = false;
     const p2 = result.save();
 
@@ -162,13 +152,16 @@ exports.updatePassword = async (req, res) => {
 exports.isForgotPasswordRequestActive = async (req, res) => {
   const { request_id } = req.params;
   try {
-    const result = await ForgotPasswordRequestModel.findOne({
-      where: { request_id },
-    });
+    const result = await ForgotPasswordRequest.findById(request_id);
 
     // if request id did not exist or it's not active
-    if (!result || !result.isActive)
+    if (!result)
       return res.status(404).json({ message: "request did not found" });
+
+    if (!result.isActive)
+      return res
+        .status(400)
+        .json({ message: "forgot password request is not active!" });
 
     // if the request is expired
     let timeDiff = new Date() - new Date(result.createdAt);
@@ -177,10 +170,12 @@ exports.isForgotPasswordRequestActive = async (req, res) => {
     if (isExpired) {
       result.isActive = false;
       await result.save();
-      return res.status(404).json({ message: "request did not found" });
+      return res
+        .status(400)
+        .json({ message: "forgot password request is expired" });
     }
     res.status(200).json({ message: "request found" });
   } catch (error) {
-    res.status(400).json(error.message);
+    res.status(500).json({ message: "request did not found" });
   }
 };
